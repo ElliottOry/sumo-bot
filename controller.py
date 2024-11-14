@@ -1,3 +1,7 @@
+#---------------------------------------------------------------
+#MAIN FILE FOR GROUP DO NOT EDIT UNLESS YOUR CODE CONFIRMED WORKS
+#---------------------------------------------------------------
+
 from machine import Pin
 from machine import I2C, Pin
 from time import sleep_ms
