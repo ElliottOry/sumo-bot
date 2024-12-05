@@ -1,0 +1,141 @@
+from machine import Pin
+from machine import PWM
+from time import sleep_ms
+from ir_rx.nec import NEC_8
+from ir_rx import print_error
+
+#----------------------auxillary functions----------------------
+#turns on motor for given direction, duty, and time
+def motor_on(motor, duty, dir, dur=-1): 
+    #set direction
+    if dir == "forward":
+        motor_PIN[motor].low()
+    elif dir == "backward":
+        motor_PIN[motor].high()
+
+    #set power
+    motor_PWM[motor].duty_u16(duty)
+    if dur!=-1:
+        sleep_ms(dur)
+        motor_off(motor)
+
+#turns off motor and resets GPIO to low
+def motor_off(motor):
+    motor_PWM[motor].duty_u16(0)
+    motor_PIN[motor].low()
+
+#inturrupt based function for IR data
+def ir_callback(data, addr, _):    
+
+    if (data==1):
+        motor_on(0, max, "forward")
+    elif (data==2):
+        motor_on(0, max, "backward")
+    elif (data==3):
+        motor_on(1, max, "forward")
+    elif (data==4):
+        motor_on(1, max, "backward")
+    else:
+        motor_on(0, 0, "forward")
+        motor_on(1, 0, "forward")
+    
+    sleep_ms(2000)
+    motor_on(0, 0, "forward")
+    motor_on(1, 0, "forward")
+
+#RF interrupts rising
+def rf_irqf0(p):
+    motor_on(0, max, "backward")
+    motor_on(1, max, "backward")
+    print("bkwd")
+    sleep_ms(500)
+
+def rf_irqf1(p):
+    motor_on(0, max, "forward")
+    motor_on(1, max, "forward")
+    print("fwd")
+    sleep_ms(500)
+
+def rf_irqf2(p):
+    motor_on(0, max, "backward")
+    motor_on(1, max, "forward")
+    print("right")
+    sleep_ms(500)
+
+def rf_irqf3(p):
+    motor_on(0, max, "forward")
+    motor_on(1, max, "backward")
+    print("left")
+    sleep_ms(500)
+
+#RF interrupts falling
+def rf_irqr0(p):
+    motor_off(0)
+    motor_off(1)
+
+
+
+#---------------------------variables---------------------------
+#logic
+motor_num = 0
+
+#PWM
+pwm_rate = 2000
+#PWM duty_u16 min = 0 max = 65535
+min = 0             
+max = 65535
+
+#motor pins
+motor_PWM = [ #PWM pins - duty cycle 
+    PWM(15, freq=pwm_rate, duty_u16=0),
+    PWM(13, freq=pwm_rate, duty_u16=0)
+]
+
+motor_PIN = [ #logic pins - direction
+    Pin(14, Pin.OUT),
+    Pin(12, Pin.OUT)
+]
+
+#RF pins
+RF = [
+    Pin(4, Pin.IN, Pin.PULL_UP),
+    Pin(5, Pin.IN, Pin.PULL_UP),
+    Pin(6, Pin.IN, Pin.PULL_UP),
+    Pin(7, Pin.IN, Pin.PULL_UP)
+]
+
+#IR receiver variables
+ir_pin = Pin(18, Pin.IN, Pin.PULL_UP)
+ir_receiver = NEC_8(ir_pin, callback=ir_callback)
+ir_receiver.error_function(print_error)
+
+#RF receiver variables
+RF[0].irq(trigger=Pin.IRQ_RISING, handler=rf_irqr0)
+RF[0].irq(trigger=Pin.IRQ_FALLING, handler=rf_irqf0)
+RF[1].irq(trigger=Pin.IRQ_FALLING, handler=rf_irqf1)
+RF[2].irq(trigger=Pin.IRQ_FALLING, handler=rf_irqf2)
+RF[3].irq(trigger=Pin.IRQ_FALLING, handler=rf_irqf3)
+
+#---------------------------main while--------------------------
+while True:
+    """for pin in range(len(RF)):
+            
+        if RF[pin]() != 0:
+            if pin == 0:
+                motor_on(0, max, "forward")
+                print("0, fwd")
+            elif pin == 1:
+                motor_on(0, max, "backward")
+                print("0, bkwd")
+            elif pin == 2:
+                motor_on(1, max, "forward")
+                print("1, fwd")
+            elif pin == 3:
+                motor_on(1, max, "backward")
+                print("1, bkwd")
+                
+            print("RF signal received on pin #", pin)
+    sleep_ms(1000)"""
+    motor_off(0)
+    motor_off(1)
+    pass
